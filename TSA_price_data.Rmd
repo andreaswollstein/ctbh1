@@ -42,7 +42,7 @@ Simple ARIMA
 ```
 
 
-Holt Winters
+Holt Winters x
 
 ```{r}
 

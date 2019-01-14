@@ -71,5 +71,7 @@ smct=as_tibble(bind_cols(df,as.data.frame(smct[,1:3])))
 
 save(file="data/bitcoin_1H_pct.Rdata",smct)
 
+write_csv2(smct,"data/bitcoin_1H_pct.csv")
+
 ```
 
