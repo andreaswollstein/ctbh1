@@ -1,0 +1,75 @@
+---
+title: "PCA analysis on twitter data"
+output: html_notebook
+---
+
+Question: findout about co-importance among word frequencies.
+
+First clear environment and load librries and data.
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(dplyr)
+
+smcd = read_csv("~/Dropbox/crypto_traders_berlin_hs1/Augmento Data/twitter/bitcoin_1H.csv") %>% 
+  select(-date) %>% # remove date column, which we dont need doing pca
+  select_if(function(x) sum(x>0)>1000) %>% # select only cols with enough data
+  mutate_all(function(x) log(x+1)) # log transform to account broadly for count data
+  
+# Note, heading tables with lots of columns causes pandoc headaches!
+
+```
+
+Data is highly zero inflated. Normal PCA would be sub-optimal. However, we can try anyways. Data is being centered and scaled.
+
+Variance explained shows importance of main components.
+
+```{r}
+# run pca
+smcd_pca = prcomp(smcd, center = TRUE, scale = T)
+
+# plot variances
+smcd_pca$sdev %>% 
+  tibble(stdev=.) %>%
+  mutate(var_exp=stdev/sum(stdev)) %>%
+  ggplot(aes(x=seq_along(var_exp),y=var_exp))+
+  geom_bar(stat="identity")+
+  ggtitle("Explained Variances")
+```
+
+Plot first two principal components. Words more close together are more related, i.e. occur together.
+```{r}
+# get clustering
+kclust = kmeans(smcd_pca$rotation[,1:2],centers=5)
+
+# plot
+ggplot(cbind(smcd_pca$rotation[,1:2],Cluster=kclust$cluster),
+       aes(x=PC1,y=PC2,label=rownames(smcd_pca$rotation),colour=factor(Cluster))) +
+  geom_point(alpha=0.2) + 
+  geom_text(size=2)
+```
+
+```{r}
+M = cor(smcd,use = "complete.obs")
+library(corrplot)
+corrplot(M, order="hclust",tl.cex = 0.3,sig.level = 0.01,insig = "blank", addgrid.col = NULL)
+
+```
+
+
+Todo: ZIFA, MDS
+
+Transform and store pc1 pc2 of count data
+
+```{r}
+smct = as.matrix(smcd) %*% smcd_pca$rotation
+
+df = read_csv("~/Dropbox/crypto_traders_berlin_hs1/Augmento Data/twitter/bitcoin_1H.csv") %>% 
+  select(date)
+
+smct=as_tibble(bind_cols(df,as.data.frame(smct[,1:3])))
+
+save(file="data/bitcoin_1H_pct.Rdata",smct)
+
+```
+

@@ -1,0 +1,31 @@
+---
+title: "summarize_pricedata"
+output: html_document
+---
+
+Load price data. Use import_and_save_price_data.R to save each csv file in a listbeforehand.
+
+```{r echo=FALSE,results='hide'}
+rm(list=ls())
+library(tidyverse)
+library(dplyr)
+load("data/price_data.Rdata")
+names(pd)
+```
+
+find out max and min time
+
+map applies a function on each element of pd and redurns a list of results. reduce applies the concat function on each result, which results in a vector.
+```{r cars}
+tminmax = map(pd, function(df) min(df$time)) %>% reduce(max)
+tmaxmin = map(pd, function(df) max(df$time)) %>% reduce(min)
+print(tminmax)
+print(tmaxmin)
+```
+
+show tmin distribution sorted to define cutoff
+```{r pressure, echo=FALSE}
+map(pd, function(df) min(df$time)) %>% reduce(c) %>% setNames(names(pd)) %>% sort()
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

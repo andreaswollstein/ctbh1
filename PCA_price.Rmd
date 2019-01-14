@@ -1,0 +1,65 @@
+---
+title: "PCA Analysis on price data"
+output: html_notebook
+---
+
+Load price data, get maximum shared time range
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(dplyr)
+load("data/price_data.Rdata")
+
+# get max shared time range
+tminmax = map(pd, function(df) min(df$time)) %>% reduce(max)
+tmaxmin = map(pd, function(df) max(df$time)) %>% reduce(min)
+
+# filter all by shared time range
+pd = map(pd, function(df) df %>% filter(time > tminmax & time < tmaxmin))
+
+# select variable of interest
+pd = map_dfc(pd,function (df) df$close)
+
+# exclude nonvariating data
+pd = pd %>% select(-which(sapply(pd, var)==0))
+
+print(dim(pd))
+colnames(pd)
+```
+
+Run PCA 
+
+```{r}
+# run pca
+pd_pca = prcomp(pd, center = TRUE, scale = T)
+
+# plot variances
+pd_pca$sdev %>% 
+  tibble(stdev=.) %>%
+  mutate(var_exp=stdev/sum(stdev)) %>%
+  ggplot(aes(x=seq_along(var_exp),y=var_exp))+
+  geom_bar(stat="identity")+
+  ggtitle("Explained Variances")
+```
+
+Plot main components
+```{r}
+# get clustering
+kclust = kmeans(pd_pca$rotation[,1:2],centers=5)
+
+# plot
+ggplot(cbind(pd_pca$rotation[,1:2],Cluster=kclust$cluster),
+       aes(x=PC1,y=PC2,label=rownames(pd_pca$rotation),colour=factor(Cluster))) +
+  geom_point(alpha=0.2) + 
+  geom_text(size=2)
+
+```
+
+Plot pairwise correlation
+
+```{r}
+M = cor(pd,use = "complete.obs")
+library(corrplot)
+corrplot(M, order="hclust",tl.cex = 0.3,sig.level = 0.01,insig = "blank", addgrid.col = NULL)
+```
+

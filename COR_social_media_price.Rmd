@@ -1,0 +1,78 @@
+---
+title: "correlation social media and price"
+output: html_notebook
+---
+
+Load price and social media count data
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(dplyr)
+library(tseries)
+
+load("data/price_data.Rdata")
+names(pd)
+
+# social media data
+smcd = read_csv("~/Dropbox/crypto_traders_berlin_hs1/Augmento Data/twitter/bitcoin_1H.csv") %>% 
+  rename(time=date) %>% # rename 
+  select_if(function(x) sum(x>0)>1000) # select only cols with enough data
+
+# pc transformed social media data
+load("data/bitcoin_1H_pct.Rdata")
+smct = smct %>% rename(time=date)
+```
+
+Create correlation vector all price vs social media
+
+```{r}
+
+joined = inner_join(smcd,pd$BTC, by="time")
+M = cor(joined %>% select(-time))
+corrplot(M,order="hclust",tl.cex = 0.4)
+```
+
+
+Correlation of PC1 social media data against all price data.
+
+```{r}
+joined = inner_join(smct,pd$BTC,by="time")
+M = cor(joined %>% select(-time))
+corrplot(M,order="hclust",tl.cex = 1)
+```
+
+Systematic compare PC1, PC2 against close
+
+```{r fig.height=12,fig.width=5}
+
+nm = names(pd)
+pc1 = rep(0,length(nm))
+pc2 = rep(0,length(nm))
+pv1 = rep(0,length(nm))
+pv2 = rep(0,length(nm))
+
+for (i in 1:length(nm)) {
+  joined = inner_join(smct,pd[[i]],by="time")
+  pc1[i] = cor(joined$PC1,joined$close)
+  pc2[i] = cor(joined$PC2,joined$close)
+  pv1[i] = cor.test(joined$PC1,joined$close)$p.value
+  pv2[i] = cor.test(joined$PC2,joined$close)$p.value
+}
+
+df = data.frame(names=nm,pc1,pc2,pv1,pv2)
+ggplot(df,aes(x=reorder(names,pc1),y=pc1)) + geom_bar(stat="identity") + coord_flip()
+```
+
+BTC is very much on top. Lets check ccf
+
+
+```{r}
+joined=inner_join(pd$BTC,smct,by="time")
+cc = ccf(joined$close,joined$PC1,lag.max = 24)
+idx = which(cc$acf==max(cc$acf))
+abline(v=cc$lag[idx],col=2)
+
+```
+
+There seems to be a lag of 6h

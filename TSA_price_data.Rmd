@@ -1,0 +1,23 @@
+---
+title: "TSA price data"
+output: html_notebook
+---
+
+
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(dplyr)
+library(tseries)
+
+load("data/price_data.Rdata")
+
+```
+
+Simple ARIMA
+
+```{r}
+
+```
+

@@ -1,0 +1,27 @@
+---
+title: "plot price data"
+output: html_notebook
+---
+
+Load
+
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(dplyr)
+load("data/price_data.Rdata")
+names(pd)
+```
+
+
+Plot
+
+```{r}
+library(tidyquant)  
+pd$BTC %>%
+  ggplot(aes(x = time, y = close, open = open, high = high, low = low, close = close)) +
+  geom_candlestick() +
+  geom_bbands(ma_fun = SMA, sd = 2, n = 20)+
+  xlim(max(pd$BTC$time)-weeks(12), max(pd$BTC$time))
+```
+
