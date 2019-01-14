@@ -10,12 +10,52 @@ rm(list=ls())
 library(tidyverse)
 library(dplyr)
 library(tseries)
+library(forecast)
 
 load("data/price_data.Rdata")
 
 ```
 
+
+Subselect data
+```{r}
+df = pd$BTC;
+df = df[2000:nrow(df),]
+head(df)
+```
+
+
+
+Time series decomposition
+
+```{r}
+bts = ts(df$close,frequency=7*24)
+z=decompose(bts);
+plot(z)
+```
+
+
 Simple ARIMA
+
+```{r}
+
+```
+
+
+Holt Winters
+
+```{r}
+
+df = pd$BTC;
+df = df[2000:nrow(df)]
+plot(df$time,df$close)
+
+ts = ts(df$close,frequency=24)
+m1 = HoltWinters(ts)
+fc = forecast(m1,h=500)
+
+```
+
 
 ```{r}
 

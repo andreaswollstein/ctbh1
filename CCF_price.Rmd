@@ -18,7 +18,7 @@ Do ccf on mutual shared time
 
 ```{r}
 joined=inner_join(pd$BTC,pd$BAT,by="time")
-cc = ccf(joined$close.x,joined$close.y,lag.max = 24)
+cc = ccf(joined$close.x,joined$close.y,lag.max = 800)
 idx = which(cc$acf==max(cc$acf))
 abline(v=cc$lag[idx],col=2)
 ```
