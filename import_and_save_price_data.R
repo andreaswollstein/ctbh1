@@ -4,7 +4,7 @@ library(tidyverse)
 library(dplyr)
 source("filter_price_data.R")
 
-pricedir = "ORIGINAL_DATA_PATH/Price data/"
+pricedir = paste(Sys.getenv('ORIGINAL_DATA_PATH'), "Price data/", sep="/")
 csvfiles = list.files(pricedir,pattern="*.csv")
 
 # get all files into one list
