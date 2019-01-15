@@ -8,6 +8,7 @@ Load price data, get maximum shared time range
 rm(list=ls())
 library(tidyverse)
 library(dplyr)
+library(ggfortify)
 load("data/price_data.Rdata")
 
 # get max shared time range
