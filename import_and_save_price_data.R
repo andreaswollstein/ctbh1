@@ -3,7 +3,7 @@ rm(list=ls())
 library(tidyverse)
 library(dplyr)
 
-pricedir = "~/Dropbox/crypto_traders_berlin_hs1/Price data/"
+pricedir = "ORIGINAL_DATA_PATH/Price data/"
 csvfiles = list.files(pricedir,pattern="*.csv")
 
 # get all files into one list
