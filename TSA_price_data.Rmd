@@ -11,53 +11,145 @@ library(tidyverse)
 library(dplyr)
 library(tseries)
 library(forecast)
+library(reshape2)
 
 load("data/price_data.Rdata")
+load("data/bitcoin_1H_pct.Rdata")
 
+# initial cutoff (remove starting interval)
+first_date = as.POSIXct("2016-11-07 00:00:00")
+
+# define seasonality in ts 
+frequency = 7*24
+
+# forecast interval
+fc_interval = 7*24
+
+# forecast plot xlim
+fc_xlim = c(80,110)
+
+# define currency
+currency = "BTC"
+
+# define arima model
+arima_order = c(7,0,2)
+arima_sorder = c(0,0,0)
+
+# get currency
+df = pd[[currency]];
+
+smct$time=smct$date
+joined = inner_join(smct,df, by="time") %>% drop_na()
+
+idx = which(joined$time==first_date)+1
+joined=joined[idx:nrow(joined),]
+
+# todo cut data to last sunday midnight
+# aggregate data to 24h?
+# use 1h and 24h data
+# predict next 24h or next 24days on last 500 datapoints by means of R2
+# ppt google
+# how quick can bitcoins be bought and sold?
+# single correlations of BTC with single buzzwords
+# forward..test for seasonality adjustion?
+# what would be the daily seasonality in price data?
+head(joined)
 ```
-
-
-Subselect data
-```{r}
-df = pd$BTC;
-df = df[2000:nrow(df),]
-head(df)
-```
-
 
 
 Time series decomposition
 
 ```{r}
-bts = ts(df$close,frequency=7*24)
-z=decompose(bts);
-plot(z)
+bts = ts(joined$close,frequency=7*24)
+bts_dec=decompose(bts);
+plot(bts_dec)
+```
+
+Seasonality, e.g. 24h*7days a week
+```{r}
+plot(bts_dec$seasonal[1:frequency])
+```
+
+PACF
+
+```{r}
+pacf(bts, lag.max = frequency)
+```
+
+ARIMA
+
+```{r}
+bts_arima = arima(bts,order=arima_order, seasonal = list(order = arima_sorder), method="CSS")
+summary(bts_arima)
+bts_arima_fc = forecast(bts_arima,h=fc_interval)
+plot(bts_arima_fc,xlim=fc_xlim)
+```
+
+ARIMA XREG
+
+```{r}
+bts_arimax = arima(bts,order=arima_order, seasonal = list(order = arima_sorder),method="CSS",xreg=joined$PC1)
+summary(bts_arimax)
+#  quick fc of
+pc1fc = forecast(joined$PC1,h=fc_interval)
+bts_arimax_fc = forecast(bts_arimax,xreg = pc1fc$mean, h=fc_interval)
+plot(bts_arimax_fc,xlim=fc_xlim)
+```
+
+Holt Winters 
+
+```{r}
+n = length(bts)
+bts_hw = HoltWinters(bts)
+bts_hw_fc = forecast(bts_hw,h=fc_interval)
+plot(bts_hw_fc,xlim=fc_xlim)
 ```
 
 
-Simple ARIMA
+Plotting forecast of three approaches:
 
 ```{r}
-
+df = data.frame(time=1:length(bts_arima_fc$mean),arima=bts_arima_fc$mean,armimax=bts_arimax_fc$mean, hw=bts_hw_fc$mean)
+dfm = melt(df,id="time")
+ggplot(dfm,aes(x=time, y=value, colour=variable))+geom_line()
 ```
 
-
-Holt Winters x
+Model evaluation
 
 ```{r}
-
-df = pd$BTC;
-df = df[2000:nrow(df)]
-plot(df$time,df$close)
-
-ts = ts(df$close,frequency=24)
-m1 = HoltWinters(ts)
-fc = forecast(m1,h=500)
-
+r2_arima = cor(bts_arima_fc$fitted,bts,use = "pairwise.complete.obs")^2
+r2_arimax = cor(bts_arimax_fc$fitted,bts,use = "pairwise.complete.obs")^2
+r2_hw = cor(bts_hw_fc$fitted,bts,use = "pairwise.complete.obs")^2
+print(r2_arima)
+print(r2_arimax)
+print(r2_hw)
 ```
 
+Walk Forward Validation
 
 ```{r}
+
+# sliding window
+wstart = length(bts)-1000;
+wend = length(bts)
+wsize = 10*frequency
+trend_pred = c()
+trend_true = c()
+
+for (i in seq(wstart,wend,10)) {
+    w = bts[(i-wsize):i]
+    
+    t = ts(w, frequency = frequency)
+    fc_hw = forecast(HoltWinters(t),h=fc_interval)
+    
+    X=1:length(fc_hw$mean)
+    Y=fc_hw$mean
+
+    trend_pred = c(trend_pred,lm(Y ~ X)$coeff[2])
+
+    Y=bts[(i+1):(i+fc_interval)]
+    trend_true = c(trend_true,lm(Y ~ X)$coeff[2])
+}
 
 ```
 

@@ -15,7 +15,7 @@ load("data/price_data.Rdata")
 names(pd)
 
 # social media data
-smcd = read_csv("~/Dropbox/crypto_traders_berlin_hs1/Augmento Data/twitter/bitcoin_1H.csv") %>% 
+smcd = read_csv("~/Dropbox/crypto_traders_berlin_hs1/Augmento Data/twitter/bitcoin_1H_rel.csv") %>% 
   rename(time=date) %>% # rename 
   select_if(function(x) sum(x>0)>1000) # select only cols with enough data
 
@@ -30,7 +30,9 @@ Create correlation vector all price vs social media
 
 joined = inner_join(smcd,pd$BTC, by="time")
 M = cor(joined %>% select(-time))
+pdf("COR_social.pdf")
 corrplot(M,order="hclust",tl.cex = 0.4)
+dev.off()
 ```
 
 
@@ -69,7 +71,7 @@ BTC is very much on top. Lets check ccf
 
 ```{r}
 joined=inner_join(pd$BTC,smct,by="time")
-cc = ccf(joined$close,joined$PC1,lag.max = 24)
+cc = ccf(joined$close,joined$PC1,lag.max = 800)
 idx = which(cc$acf==max(cc$acf))
 abline(v=cc$lag[idx],col=2)
 

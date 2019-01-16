@@ -10,8 +10,8 @@ First clear environment and load librries and data.
 rm(list=ls())
 library(tidyverse)
 library(dplyr)
-
-smcd = read_csv("~/Dropbox/crypto_traders_berlin_hs1/Augmento Data/twitter/bitcoin_1H.csv") %>% 
+library(ggfortify)
+smcd = read_csv("~/Dropbox/crypto_traders_berlin_hs1/Augmento Data/twitter/bitcoin_1H_rel.csv") %>% 
   select(-date) %>% # remove date column, which we dont need doing pca
   select_if(function(x) sum(x>0)>1000) %>% # select only cols with enough data
   mutate_all(function(x) log(x+1)) # log transform to account broadly for count data
@@ -46,7 +46,7 @@ kclust = kmeans(smcd_pca$rotation[,1:2],centers=5)
 ggplot(cbind(smcd_pca$rotation[,1:2],Cluster=kclust$cluster),
        aes(x=PC1,y=PC2,label=rownames(smcd_pca$rotation),colour=factor(Cluster))) +
   geom_point(alpha=0.2) + 
-  geom_text(size=2)
+  geom_text(size=3)
 ```
 
 ```{r}
