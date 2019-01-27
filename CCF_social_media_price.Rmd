@@ -1,0 +1,78 @@
+---
+title: "CCF cross correlation function"
+output: html_notebook
+---
+
+Load price and social media data
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(dplyr)
+library(tseries)
+library(corrplot)
+
+load("data/price_data.Rdata")
+
+# social media data
+smcd = read_csv("~/Dropbox/crypto_traders_berlin_hs1/Augmento Data/twitter/bitcoin_1H_rel.csv") %>%
+  rename(time=date) %>% # rename 
+  select_if(function(x) sum(x>0)>1000) # select only cols with enough data
+
+# pc transformed social media data
+load("data/bitcoin_1H_pct.Rdata")
+smct = smct %>% rename(time=date)
+names(pd)
+```
+
+CCF of BTC and BAT
+
+```{r}
+joined=inner_join(pd$BTC,pd$BAT,by="time")
+cc = ccf(joined$close.x,joined$close.y,lag.max = 1800)
+idx = which(cc$acf==max(cc$acf))
+abline(v=cc$lag[idx],col=2)
+```
+
+CCF BTC and PC1
+
+```{r}
+joined=inner_join(pd$BTC,smct,by="time")
+cc = ccf(joined$close,-joined$PC1,lag.max = 2000)
+idx = which(cc$acf==max(cc$acf))
+abline(v=cc$lag[idx],col=2)
+```
+
+```{r}
+joined=inner_join(pd$BTC,smcd,by="time")
+cc = ccf(joined$close,joined$Spam_rel,lag.max = 2000)
+idx = which(cc$acf==max(cc$acf))
+abline(v=cc$lag[idx],col=2)
+```
+
+
+Do it pairwise among cryptos (waste of time)
+
+```{r}
+
+# nm = names(pd)
+# 
+# CC = matrix(0,nrow = length(nm),ncol=length(nm))
+# rownames(CC) = nm
+# colnames(CC) = nm
+# 
+# for (i in 1:(length(nm)-1)) {
+#   print(i)
+#   for (j in (i+1):length(nm)) {
+#     joined=inner_join(pd[[i]],pd[[j]],by="time")
+#     cc = ccf(joined$close.x,joined$close.y,lag.max = 2000,pl=F)
+#     if (!is.na(max(cc$acf))) {
+#       idx = which(cc$acf==max(cc$acf))
+#       CC[i,j] = cc$lag[idx]
+#       CC[j,i] = cc$lag[idx]
+#     }
+#   }
+# }
+# corrplot(CC/24, order="hclust",tl.cex = 0.3, addgrid.col = NULL)
+
+```
+

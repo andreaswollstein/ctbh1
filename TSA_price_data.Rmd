@@ -26,7 +26,8 @@ frequency = 7*24
 fc_interval = 7*24
 
 # forecast plot xlim
-fc_xlim = c(80,110)
+fc_xlim = c(108,110)
+fc_ylim = c(2000,5000)
 
 # define currency
 currency = "BTC"
@@ -44,6 +45,9 @@ joined = inner_join(smct,df, by="time") %>% drop_na()
 idx = which(joined$time==first_date)+1
 joined=joined[idx:nrow(joined),]
 
+# create ts object
+bts = ts(joined$close,frequency=7*24)
+
 # todo cut data to last sunday midnight
 # aggregate data to 24h?
 # use 1h and 24h data
@@ -60,7 +64,6 @@ head(joined)
 Time series decomposition
 
 ```{r}
-bts = ts(joined$close,frequency=7*24)
 bts_dec=decompose(bts);
 plot(bts_dec)
 ```
@@ -82,7 +85,7 @@ ARIMA
 bts_arima = arima(bts,order=arima_order, seasonal = list(order = arima_sorder), method="CSS")
 summary(bts_arima)
 bts_arima_fc = forecast(bts_arima,h=fc_interval)
-plot(bts_arima_fc,xlim=fc_xlim)
+plot(bts_arima_fc,xlim=fc_xlim,ylim = fc_ylim)
 ```
 
 ARIMA XREG
@@ -93,7 +96,7 @@ summary(bts_arimax)
 #  quick fc of
 pc1fc = forecast(joined$PC1,h=fc_interval)
 bts_arimax_fc = forecast(bts_arimax,xreg = pc1fc$mean, h=fc_interval)
-plot(bts_arimax_fc,xlim=fc_xlim)
+plot(bts_arimax_fc,xlim=fc_xlim,ylim = fc_ylim)
 ```
 
 Holt Winters 
@@ -102,7 +105,7 @@ Holt Winters
 n = length(bts)
 bts_hw = HoltWinters(bts)
 bts_hw_fc = forecast(bts_hw,h=fc_interval)
-plot(bts_hw_fc,xlim=fc_xlim)
+plot(bts_hw_fc,xlim=fc_xlim,ylim = fc_ylim)
 ```
 
 
@@ -125,31 +128,61 @@ print(r2_arimax)
 print(r2_hw)
 ```
 
-Walk Forward Validation
+For Walk Forward Validation see TSA_compute.R 
 
 ```{r}
+# 
+# # sliding window
+# wstart = length(bts)-1000;
+# wend = length(bts)
+# wsize = 10*frequency
+# trend_pred = c()
+# trend_true = c()
+# 
+# for (i in seq(wstart,wend,10)) {
+#     w = bts[(i-wsize):i]
+#     
+#     t = ts(w, frequency = frequency)
+#     fc_hw = forecast(HoltWinters(t),h=fc_interval)
+#     
+#     X=1:length(fc_hw$mean)
+#     Y=fc_hw$mean
+# 
+#     trend_pred = c(trend_pred,lm(Y ~ X)$coeff[2])
+# 
+#     Y=bts[(i+1):(i+fc_interval)]
+#     trend_true = c(trend_true,lm(Y ~ X)$coeff[2])
+# }
 
-# sliding window
-wstart = length(bts)-1000;
-wend = length(bts)
-wsize = 10*frequency
-trend_pred = c()
-trend_true = c()
+```
 
-for (i in seq(wstart,wend,10)) {
-    w = bts[(i-wsize):i]
-    
-    t = ts(w, frequency = frequency)
-    fc_hw = forecast(HoltWinters(t),h=fc_interval)
-    
-    X=1:length(fc_hw$mean)
-    Y=fc_hw$mean
+Validation of computation
 
-    trend_pred = c(trend_pred,lm(Y ~ X)$coeff[2])
+```{r}
+load("data/TSA_compute_fcasts_v1.Rdata")
 
-    Y=bts[(i+1):(i+fc_interval)]
-    trend_true = c(trend_true,lm(Y ~ X)$coeff[2])
+fctime = c(6,12,24,48,100,160)
+
+# correlation with outcome
+c_hw = matrix(0,nrow(fcasts$hw),ncol=length(fctime))
+c_arima = matrix(0,nrow(fcasts$hw),ncol=length(fctime))
+c_arimax= matrix(0,nrow(fcasts$hw),ncol=length(fctime))
+for (i in 1:nrow(fcasts$hw)) {
+  for (j in 1:length(fctime)) {
+      c_hw[i,j] = cor(fcasts$hw[i,1:fctime[j]], fcasts$real[i,1:fctime[j]])
+      c_arima[i,j] = cor(fcasts$arima[i,1:fctime[j]], fcasts$real[i,1:fctime[j]]) 
+      c_arimax[i,j] = cor(fcasts$arimax[i,1:fctime[j]], fcasts$real[i,1:fctime[j]]) 
+  }
 }
+c_hw = c_hw[complete.cases(c_hw),]
+c_arima = c_arima[complete.cases(c_arima),]
+c_arimax = c_arimax[complete.cases(c_arimax),]
 
+df = data.frame(forecast_time_h=fctime,
+                HoltWinters=colSums(c_hw>0,na.rm = T)/nrow(c_hw)*100,
+                ARIMA=colSums(c_arima>0,na.rm = T)/nrow(c_arima)*100,
+                ARIMAX=colSums(c_arimax>0,na.rm = T)/nrow(c_arimax)*100)
+dfm = melt(df,id="forecast_time_h")
+ggplot(dfm,aes(x=forecast_time_h,y=value,colour=variable))+geom_line()+geom_point()+ylab("% correctly predicted trend")
 ```
 

@@ -10,12 +10,12 @@ rm(list=ls())
 library(tidyverse)
 library(dplyr)
 library(tseries)
-
+library(corrplot)
 load("data/price_data.Rdata")
 names(pd)
 
 # social media data
-smcd = read_csv("~/Dropbox/crypto_traders_berlin_hs1/Augmento Data/twitter/bitcoin_1H_rel.csv") %>% 
+smcd = read_csv("~/Dropbox/crypto_traders_berlin_hs1/Augmento Data/twitter/bitcoin_1H_rel.csv") %>%
   rename(time=date) %>% # rename 
   select_if(function(x) sum(x>0)>1000) # select only cols with enough data
 
@@ -29,10 +29,14 @@ Create correlation vector all price vs social media
 ```{r}
 
 joined = inner_join(smcd,pd$BTC, by="time")
-M = cor(joined %>% select(-time))
-pdf("COR_social.pdf")
-corrplot(M,order="hclust",tl.cex = 0.4)
-dev.off()
+joined = inner_join(smct,joined)
+M = cor(joined %>% select(-time,-X1,-volumeto))
+# filter relevant variables r^2>0.1
+idx = M[which(colnames(M)=="close"),]^2>0.05
+M=M[idx,idx]
+#pdf("COR_social.pdf")
+corrplot(M,order="hclust",tl.cex = 1)
+#dev.off()
 ```
 
 
@@ -40,7 +44,7 @@ Correlation of PC1 social media data against all price data.
 
 ```{r}
 joined = inner_join(smct,pd$BTC,by="time")
-M = cor(joined %>% select(-time))
+M = cor(joined %>% select(-time,-volumefrom,-volumeto,-X1))
 corrplot(M,order="hclust",tl.cex = 1)
 ```
 
